@@ -1,84 +1,195 @@
-# Turborepo starter
+# Setting Up Turborepo with Next.js and Express.js
 
-This Turborepo starter is maintained by the Turborepo core team.
+This guide walks you through setting up a monorepo using Turborepo that includes a Next.js frontend and an Express.js backend.
 
-## Using this example
+## Prerequisites
 
-Run the following command:
+- Node.js (v16 or newer recommended)
+- npm
+- Git
 
-```sh
-npx create-turbo@latest
+## Step 1: Create a New Turborepo Project
+
+First, let's create a new Turborepo project:
+
+```bash
+npx create-turbo@latest .
 ```
 
-## What's inside?
+When prompted, select:
+* Package manager: npm
+* Import a workspace configuration: No
 
-This Turborepo includes the following packages/apps:
+## Step 2: Modify the Project Structure
 
-### Apps and Packages
+Remove the default apps that were created:
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
-
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-```
-cd my-turborepo
-pnpm build
+```bash
+rm -rf apps/web apps/docs
 ```
 
-### Develop
+## Step 3: Create the Next.js App
 
-To develop all apps and packages, run the following command:
+Create a new Next.js application in the apps directory:
 
-```
-cd my-turborepo
-pnpm dev
-```
-
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-```
-cd my-turborepo
-npx turbo login
+```bash
+cd apps && npx create-next-app@latest web --typescript --tailwind --eslint --app --src-dir --import-alias "@/*"
 ```
 
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
+This command creates a Next.js app with:
+- TypeScript support
+- Tailwind CSS integration
+- ESLint configuration
+- App Router (Next.js 13+)
+- Source directory structure
+- Import alias configuration
 
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
+## Step 4: Create the Express.js Backend
 
+Create a directory for your Express.js API and initialize it:
+
+```bash
+mkdir -p apps/api && cd apps/api && npm init -y
 ```
-npx turbo link
+
+## Step 5: Install Express.js Dependencies
+
+Install necessary dependencies for your Express.js API:
+
+```bash
+cd apps/api && npm install express typescript @types/express @types/node ts-node-dev --save-dev
 ```
 
-## Useful Links
+## Step 6: Create the Express.js Server
 
-Learn more about the power of Turborepo:
+Create a basic Express.js server by creating a new file at `apps/api/src/index.ts`:
 
-- [Tasks](https://turborepo.com/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.com/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.com/docs/reference/configuration)
-- [CLI Usage](https://turborepo.com/docs/reference/command-line-reference)
+```typescript
+import express from 'express';
+const app = express();
+const port = process.env.PORT || 3001;
+
+app.get('/', (req, res) => {
+  res.json({ message: 'Hello from API' });
+});
+
+app.listen(port, () => {
+  console.log(`API server running on port ${port}`);
+});
+```
+
+## Step 7: Add TypeScript Configuration for the API
+
+Create a `tsconfig.json` file in the API directory:
+
+```json
+{
+  "compilerOptions": {
+    "target": "es2017",
+    "module": "commonjs",
+    "lib": ["es2017"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "dist"
+  },
+  "include": ["src/**/*"]
+}
+```
+
+## Step 8: Update the API's Package.json Scripts
+
+Add the following scripts to the `apps/api/package.json` file:
+
+```json
+{
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  }
+}
+```
+
+## Step 9: Update the Root Package.json
+
+Update the root `package.json` to include both workspaces:
+
+```json
+{
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}
+```
+
+## Step 10: Configure Turborepo Pipeline
+
+Update the `turbo.json` in the root directory to configure the build pipeline:
+
+```json
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": ["**/.env.*local"],
+  "pipeline": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+    },
+    "lint": {},
+    "dev": {
+      "cache": false,
+      "persistent": true
+    }
+  }
+}
+```
+
+## Running Your Monorepo
+
+Now you can run the following commands from the root directory:
+
+* To run both apps in development mode:
+  ```bash
+  npm run dev
+  ```
+
+* To build both apps:
+  ```bash
+  npm run build
+  ```
+
+Your Next.js app will run on `http://localhost:3000` and your Express.js API will run on `http://localhost:3001`.
+
+## What's Next?
+
+This setup gives you a monorepo with:
+* A Next.js application in `apps/web`
+* An Express.js API in `apps/api`
+* Support for shared packages in the `packages` directory
+* TypeScript support for both applications
+* Turborepo handling the build pipeline and dependencies
+
+Consider adding the following to enhance your monorepo:
+
+1. Create shared packages for common code
+2. Set up environment variables
+3. Add authentication
+4. Configure a database
+5. Set up deployment scripts
+
+## Troubleshooting Common Issues
+
+### Port Conflicts
+
+If you encounter port conflicts, modify the port numbers in your applications. For the Express API, you can change the port in `apps/api/src/index.ts`. For Next.js, you can set a different port using the `-p` flag with the `next dev` command.
+
+### TypeScript Errors
+
+Ensure your TypeScript configurations are properly set up. The `tsconfig.json` files should be properly configured for each application.
+
+### Package Installation Issues
+
+If you encounter package installation issues, try running `npm install` at the root directory to ensure all dependencies are properly installed.
